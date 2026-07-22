@@ -31,6 +31,14 @@ const CHESS_GAME_STATE = {
     GAME_OVER: 'game_over'
 };
 
+// Learn mode state enumeration
+const CHESS_LEARN_STATE = {
+    MENU: 'learn_menu',
+    WALKTHROUGH: 'learn_walkthrough',
+    PRACTICE: 'learn_practice',
+    COMPLETE: 'learn_complete'
+};
+
 // Modern flat color palette
 const CHESS_COLORS = {
     boardLight: '#EEEED2',
