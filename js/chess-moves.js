@@ -320,10 +320,69 @@ const ChessMoves = (() => {
         return false;
     }
 
+    /**
+     * applyMove — pure helper that applies a move to a cloned board and returns
+     * the new state. Mirrors the move-application half of ChessGame._executeMove
+     * (standard move, en passant, castling, promotion signal) but never mutates
+     * the input board. Used by both ChessGame and ChessLearn.
+     * @returns {{ newBoard:Array, newEnPassantTarget:object|null, capturedPiece:object|null, didCastle:string|undefined, didPromote:boolean, moverColor:number }}
+     */
+    function applyMove(board, enPassantTarget, move) {
+        // Deep-clone the board
+        const newBoard = board.map(row => row.map(p => p ? { type: p.type, player: p.player, moved: p.moved } : null));
+
+        const piece = newBoard[move.from.r][move.from.c];
+        if (!piece) {
+            throw new Error('applyMove: no piece at source square');
+        }
+
+        let didCastle = undefined;
+        let capturedPiece = null;
+        const moverColor = piece.player;
+
+        if (move.enPassant) {
+            capturedPiece = newBoard[move.capturedRow][move.capturedCol];
+            newBoard[move.capturedRow][move.capturedCol] = null;
+        } else {
+            capturedPiece = newBoard[move.to.r][move.to.c];
+        }
+
+        // Move the piece
+        newBoard[move.to.r][move.to.c] = piece;
+        newBoard[move.from.r][move.from.c] = null;
+        piece.moved = true;
+
+        if (move.castle === 'king') {
+            const rook = newBoard[move.from.r][7];
+            newBoard[move.from.r][5] = rook;
+            newBoard[move.from.r][7] = null;
+            if (rook) rook.moved = true;
+            didCastle = 'king';
+        } else if (move.castle === 'queen') {
+            const rook = newBoard[move.from.r][0];
+            newBoard[move.from.r][3] = rook;
+            newBoard[move.from.r][0] = null;
+            if (rook) rook.moved = true;
+            didCastle = 'queen';
+        }
+
+        const newEnPassantTarget = move.isDoubleStep
+            ? { row: (move.from.r + move.to.r) / 2, col: move.from.c }
+            : null;
+
+        const didPromote = move.promoteTo ? true : undefined;
+        if (didPromote) {
+            piece.type = move.promoteTo;
+        }
+
+        return { newBoard, newEnPassantTarget, capturedPiece, didCastle, didPromote, moverColor };
+    }
+
     return {
         getLegalMoves: getLegalMoves,
         hasAnyLegalMove: hasAnyLegalMove,
         isInCheck: isInCheck,
-        isSquareAttacked: isSquareAttacked
+        isSquareAttacked: isSquareAttacked,
+        applyMove: applyMove
     };
 })();

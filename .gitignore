@@ -18,3 +18,8 @@ venv/
 
 # Temporary folders
 tmp/
+
+.idea
+.kiro
+.amazonq
+.superpowers
