@@ -236,6 +236,10 @@ function test_learn_practice_correctUserMoveAndAutoBlack() {
     clickSquare(3, 4); // e4
     assert(ChessBoard.getPiece(3, 4) !== null, 'e4 has white pawn after user move');
     assertEqual(ChessLearn.getState(), 'learn_practice', 'still in practice (Black timer pending)');
+    const flash = ChessLearn.getFlashState();
+    assert(flash.successFlash !== null, 'successFlash set after correct move');
+    assertEqual(flash.successFlash.square.r, 3, 'successFlash square row is e4');
+    assertEqual(flash.successFlash.square.c, 4, 'successFlash square col is e4');
     ChessLearn.exit();
 }
 
@@ -247,6 +251,12 @@ function test_learn_practice_wrongDestinationTriggersCorrection() {
     // that nothing changed synchronously and we're still in practice.
     assert(ChessBoard.getPiece(1, 4) !== null, 'e2 pawn still there immediately after wrong click');
     assertEqual(ChessLearn.getState(), 'learn_practice', 'still in practice');
+    const flash = ChessLearn.getFlashState();
+    assert(flash.correctionArrow !== null, 'correctionArrow set after wrong move');
+    assertEqual(flash.correctionArrow.from.r, 1, 'arrow starts at e2 row');
+    assertEqual(flash.correctionArrow.from.c, 4, 'arrow starts at e2 col');
+    assertEqual(flash.correctionArrow.to.r, 3, 'arrow ends at e4 row');
+    assertEqual(flash.correctionArrow.to.c, 4, 'arrow ends at e4 col');
     ChessLearn.exit();
 }
 

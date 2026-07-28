@@ -83,6 +83,8 @@ const ChessLearn = (() => {
         step = 0;
         selectedFrom = null;
         wrongFlash = null;
+        successFlash = null;
+        correctionArrow = null;
     }
 
     function start(openingId, mode) {
@@ -98,6 +100,8 @@ const ChessLearn = (() => {
         step = 0;
         selectedFrom = null;
         wrongFlash = null;
+        successFlash = null;
+        correctionArrow = null;
         state = (mode === 'practice') ? CHESS_LEARN_STATE.PRACTICE : CHESS_LEARN_STATE.WALKTHROUGH;
         // If first move is Black's somehow, play it (shouldn't happen with our data — White always moves first)
         if (_expectedPlayer() === CHESS_PLAYER.TWO) {
@@ -113,6 +117,8 @@ const ChessLearn = (() => {
         step = 0;
         selectedFrom = null;
         wrongFlash = null;
+        successFlash = null;
+        correctionArrow = null;
     }
 
     function isActive() {
