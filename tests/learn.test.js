@@ -113,5 +113,48 @@ test_applyMove_queenSideCastle();
 test_applyMove_enPassant();
 test_applyMove_doesNotMutateInput();
 
+loadScript('js/chess-openings.js');
+
+console.log('\nChessOpenings.validate');
+test_openings_validate_accepts_bundled();
+test_openings_validate_rejects_out_of_bounds();
+test_openings_validate_rejects_empty_start();
+
+function test_openings_validate_accepts_bundled() {
+    const result = ChessOpenings.validate();
+    assert(result.valid.length === 3, 'all three bundled openings pass validation');
+    assert(result.invalid.length === 0, 'no invalid openings');
+}
+
+function test_openings_validate_rejects_out_of_bounds() {
+    // Mutate the openings to include a bad one, then re-validate
+    const original = CHESS_OPENINGS.slice();
+    CHESS_OPENINGS.push({
+        id: 'bad-bounds',
+        name: 'Bad Bounds',
+        caption: 'oob',
+        moves: [{ from: { r: 0, c: 0 }, to: { r: 8, c: 0 } }]
+    });
+    const result = ChessOpenings.validate();
+    assert(result.invalid.some(o => o.id === 'bad-bounds'), 'bad-bounds rejected');
+    // Restore
+    CHESS_OPENINGS.length = 0;
+    CHESS_OPENINGS.push(...original);
+}
+
+function test_openings_validate_rejects_empty_start() {
+    const original = CHESS_OPENINGS.slice();
+    CHESS_OPENINGS.push({
+        id: 'bad-empty',
+        name: 'Bad Empty',
+        caption: 'empty',
+        moves: [{ from: { r: 3, c: 3 }, to: { r: 4, c: 3 } }] // e4 starts on an empty square
+    });
+    const result = ChessOpenings.validate();
+    assert(result.invalid.some(o => o.id === 'bad-empty'), 'bad-empty rejected');
+    CHESS_OPENINGS.length = 0;
+    CHESS_OPENINGS.push(...original);
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
