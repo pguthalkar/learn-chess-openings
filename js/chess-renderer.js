@@ -9,6 +9,7 @@ const ChessRenderer = (() => {
     let canvas, ctx;
     let boardSize, squareSize, offsetX, offsetY;
     let promotionRects = [];
+    let menuLearnButtonRect = null;
 
     function init(canvasElement) {
         canvas = canvasElement;
@@ -254,6 +255,30 @@ const ChessRenderer = (() => {
 
         _drawButton(centerX, centerY + titleSize * 1.2, 'Click to Start', titleSize * 0.45);
 
+        // Learn button — stores its hit-rect in menuLearnButtonRect
+        const learnY = centerY + titleSize * 2.2;
+        const learnSize = titleSize * 0.45;
+        ctx.font = `bold ${learnSize}px sans-serif`;
+        const learnMetrics = ctx.measureText('Learn Openings');
+        const learnPadX = learnSize * 0.8;
+        const learnPadY = learnSize * 0.5;
+        menuLearnButtonRect = {
+            x: centerX - learnMetrics.width / 2 - learnPadX,
+            y: learnY - learnPadY,
+            w: learnMetrics.width + learnPadX * 2,
+            h: learnSize + learnPadY * 2
+        };
+        ctx.fillStyle = CHESS_COLORS.border;
+        ctx.fillRect(menuLearnButtonRect.x, menuLearnButtonRect.y, menuLearnButtonRect.w, menuLearnButtonRect.h);
+        ctx.strokeStyle = CHESS_COLORS.borderAccent;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(menuLearnButtonRect.x, menuLearnButtonRect.y, menuLearnButtonRect.w, menuLearnButtonRect.h);
+        ctx.font = `bold ${learnSize}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textPrimary;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Learn Openings', centerX, learnY + learnSize * 0.35);
+
         ctx.restore();
     }
 
@@ -358,6 +383,12 @@ const ChessRenderer = (() => {
         ctx.fillText(text, centerX, y + fontSize * 0.35);
     }
 
+    function learnButtonFromPixel(px, py) {
+        if (!menuLearnButtonRect) return false;
+        const r = menuLearnButtonRect;
+        return px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h;
+    }
+
     function clear() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = CHESS_COLORS.background;
@@ -370,6 +401,7 @@ const ChessRenderer = (() => {
         getBoardMetrics,
         squareFromPixel,
         promotionChoiceFromPixel,
+        learnButtonFromPixel,
         renderBoard,
         renderBorder,
         renderCoordinates,

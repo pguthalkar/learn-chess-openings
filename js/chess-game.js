@@ -75,6 +75,12 @@ const ChessGame = (() => {
      */
     function _handleClick(point) {
         if (gameState === CHESS_GAME_STATE.MENU) {
+            if (ChessRenderer.learnButtonFromPixel(point.px, point.py)) {
+                if (typeof ChessLearn !== 'undefined' && ChessLearn.openMenu) {
+                    ChessLearn.openMenu();
+                }
+                return;
+            }
             _startNewGame();
         } else if (gameState === CHESS_GAME_STATE.GAME_OVER) {
             _startNewGame();
