@@ -123,35 +123,33 @@ const ChessGame = (() => {
     function _executeMove(move) {
         const fromRow = selectedSquare.row;
         const fromCol = selectedSquare.col;
+        const board = ChessBoard.getBoard();
+        const movingPieceBefore = board[fromRow][fromCol];
 
-        const movingPiece = ChessBoard.getPiece(fromRow, fromCol);
+        const learnMove = {
+            from: { r: fromRow, c: fromCol },
+            to: { r: move.row, c: move.col },
+            castle: move.castle,
+            enPassant: move.enPassant,
+            capturedRow: move.capturedRow,
+            capturedCol: move.capturedCol,
+            isDoubleStep: move.isDoubleStep
+        };
+        const result = ChessMoves.applyMove(board, enPassantTarget, learnMove);
 
-        ChessBoard.movePiece(fromRow, fromCol, move.row, move.col);
-
-        if (move.enPassant) {
-            ChessBoard.removePiece(move.capturedRow, move.capturedCol);
+        for (let r = 0; r < CHESS_BOARD_SIZE; r++) {
+            for (let c = 0; c < CHESS_BOARD_SIZE; c++) {
+                ChessBoard.setPiece(r, c, result.newBoard[r][c]);
+            }
         }
-
-        if (move.castle === 'king') {
-            const rook = ChessBoard.removePiece(fromRow, 7);
-            ChessBoard.setPiece(fromRow, 5, rook);
-            if (rook) rook.moved = true;
-        } else if (move.castle === 'queen') {
-            const rook = ChessBoard.removePiece(fromRow, 0);
-            ChessBoard.setPiece(fromRow, 3, rook);
-            if (rook) rook.moved = true;
-        }
-
-        enPassantTarget = move.isDoubleStep
-            ? { row: (fromRow + move.row) / 2, col: fromCol }
-            : null;
+        enPassantTarget = result.newEnPassantTarget;
 
         selectedSquare = null;
         legalMoves = [];
 
-        const promotionRank = (movingPiece.player === CHESS_PLAYER.ONE) ? 7 : 0;
-        if (movingPiece.type === CHESS_PIECE_TYPE.PAWN && move.row === promotionRank) {
-            pendingPromotion = { row: move.row, col: move.col, player: movingPiece.player };
+        const promotionRank = (movingPieceBefore.player === CHESS_PLAYER.ONE) ? 7 : 0;
+        if (movingPieceBefore.type === CHESS_PIECE_TYPE.PAWN && move.row === promotionRank) {
+            pendingPromotion = { row: move.row, col: move.col, player: movingPieceBefore.player };
             gameState = CHESS_GAME_STATE.PROMOTING;
         } else {
             _switchTurn();
