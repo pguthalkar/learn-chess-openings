@@ -17,6 +17,8 @@ function loadScript(filePath) {
 loadScript('js/chess-constants.js');
 loadScript('js/chess-board.js');
 loadScript('js/chess-moves.js');
+loadScript('js/chess-pieces.js');
+loadScript('js/chess-renderer.js');
 ChessBoard.init();
 
 let passed = 0, failed = 0;
@@ -114,6 +116,7 @@ test_applyMove_enPassant();
 test_applyMove_doesNotMutateInput();
 
 loadScript('js/chess-openings.js');
+loadScript('js/chess-learn.js');
 
 console.log('\nChessOpenings.validate');
 test_openings_validate_accepts_bundled();
@@ -154,6 +157,109 @@ function test_openings_validate_rejects_empty_start() {
     assert(result.invalid.some(o => o.id === 'bad-empty'), 'bad-empty rejected');
     CHESS_OPENINGS.length = 0;
     CHESS_OPENINGS.push(...original);
+}
+
+// Real-module harness: give ChessRenderer a minimal fake canvas/window so its
+// actual squareFromPixel/getBoardMetrics run under Node (no DOM available).
+// A stub can't replace the ChessBoard/ChessRenderer identifiers here — they're
+// lexical `const`s from earlier loadScript() calls, not properties on `global`,
+// so `global.ChessBoard = mock` would not be seen by chess-learn.js at all.
+global.window = { innerWidth: 1600, innerHeight: 1600, addEventListener: () => {} };
+const _fakeCtx = new Proxy({}, {
+    get(target, prop) {
+        if (prop === 'measureText') return () => ({ width: 40 });
+        if (prop === 'createRadialGradient') return () => ({ addColorStop: () => {} });
+        if (prop in target) return target[prop];
+        return () => {};
+    },
+    set(target, prop, value) { target[prop] = value; return true; }
+});
+const _fakeCanvas = { width: 0, height: 0, getContext: () => _fakeCtx };
+ChessRenderer.init(_fakeCanvas);
+ChessBoard.init();
+
+function pixelFor(row, col) {
+    const m = ChessRenderer.getBoardMetrics();
+    return {
+        px: m.offsetX + col * m.squareSize + m.squareSize / 2,
+        py: m.offsetY + (7 - row) * m.squareSize + m.squareSize / 2
+    };
+}
+function clickSquare(row, col) {
+    ChessLearn.handleClick(pixelFor(row, col));
+}
+
+console.log('\nChessLearn state machine');
+test_learn_walkthrough_correctMoveAdvances();
+test_learn_walkthrough_wrongFromIgnored();
+test_learn_walkthrough_wrongToIgnored();
+test_learn_practice_correctUserMoveAndAutoBlack();
+test_learn_practice_wrongDestinationTriggersCorrection();
+test_learn_completeReachedAtEnd();
+
+function test_learn_walkthrough_correctMoveAdvances() {
+    ChessLearn.start('italian', 'walkthrough');
+    assertEqual(ChessLearn.getState(), 'learn_walkthrough', 'started in walkthrough');
+    assertEqual(ChessBoard.getPiece(1, 4).type, 'pawn', 'e2 has pawn initially');
+
+    clickSquare(1, 4); // e2
+    clickSquare(3, 4); // e4
+    const moved = ChessBoard.getPiece(3, 4);
+    assert(moved !== null, 'e4 now has the pawn');
+    assertEqual(moved.type, 'pawn', 'piece on e4 is pawn');
+
+    ChessLearn.exit();
+}
+
+function test_learn_walkthrough_wrongFromIgnored() {
+    ChessLearn.start('italian', 'walkthrough');
+    clickSquare(0, 0); // a1 — not the expected e2 source
+    assert(ChessBoard.getPiece(1, 4) !== null, 'e2 pawn still in place after wrong source click');
+    assertEqual(ChessLearn.getState(), 'learn_walkthrough', 'still in walkthrough');
+    ChessLearn.exit();
+}
+
+function test_learn_walkthrough_wrongToIgnored() {
+    ChessLearn.start('italian', 'walkthrough');
+    clickSquare(1, 4); // e2 — correct source
+    clickSquare(3, 0); // a4 — wrong destination
+    assert(ChessBoard.getPiece(1, 4) !== null, 'e2 pawn still in place after wrong destination');
+    assertEqual(ChessLearn.getState(), 'learn_walkthrough', 'still in walkthrough');
+    ChessLearn.exit();
+}
+
+function test_learn_practice_correctUserMoveAndAutoBlack() {
+    // Practice auto-plays Black via a 300ms setTimeout; this test only checks
+    // the synchronous user-move path (the auto-play is verified in-browser).
+    ChessLearn.start('italian', 'practice');
+    clickSquare(1, 4); // e2
+    clickSquare(3, 4); // e4
+    assert(ChessBoard.getPiece(3, 4) !== null, 'e4 has white pawn after user move');
+    assertEqual(ChessLearn.getState(), 'learn_practice', 'still in practice (Black timer pending)');
+    ChessLearn.exit();
+}
+
+function test_learn_practice_wrongDestinationTriggersCorrection() {
+    ChessLearn.start('italian', 'practice');
+    clickSquare(1, 4); // e2 — correct source
+    clickSquare(3, 0); // a4 — wrong destination
+    // The correction fires 600ms later via setTimeout; here we only check
+    // that nothing changed synchronously and we're still in practice.
+    assert(ChessBoard.getPiece(1, 4) !== null, 'e2 pawn still there immediately after wrong click');
+    assertEqual(ChessLearn.getState(), 'learn_practice', 'still in practice');
+    ChessLearn.exit();
+}
+
+function test_learn_completeReachedAtEnd() {
+    // Use queens-gambit (also 10 plies)
+    ChessLearn.start('queens-gambit', 'walkthrough');
+    const moves = CHESS_OPENINGS.find(o => o.id === 'queens-gambit').moves;
+    for (let i = 0; i < moves.length; i++) {
+        clickSquare(moves[i].from.r, moves[i].from.c);
+        clickSquare(moves[i].to.r, moves[i].to.c);
+    }
+    assertEqual(ChessLearn.getState(), 'learn_complete', 'reached COMPLETE after final move');
+    ChessLearn.exit();
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
