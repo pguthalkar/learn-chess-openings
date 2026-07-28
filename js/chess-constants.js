@@ -53,6 +53,7 @@ const CHESS_COLORS = {
     legalMove: 'rgba(38, 166, 154, 0.65)',
     selected: 'rgba(255, 193, 7, 0.7)',
     check: 'rgba(211, 47, 47, 0.65)',
+    correct: 'rgba(76, 175, 80, 0.65)',
     background: '#1B1B1B',
     textPrimary: '#ECEFF1',
     textSecondary: '#90A4AE'
