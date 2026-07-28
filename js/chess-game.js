@@ -37,6 +37,12 @@ const ChessGame = (() => {
     function _gameLoop() {
         ChessRenderer.clear();
 
+        if (ChessLearn.isActive()) {
+            ChessLearn.render();
+            requestAnimationFrame(_gameLoop);
+            return;
+        }
+
         if (gameState === CHESS_GAME_STATE.MENU) {
             ChessRenderer.renderMenuScreen();
         } else if (gameState === CHESS_GAME_STATE.PLAYING) {
@@ -74,11 +80,24 @@ const ChessGame = (() => {
      * @param {object} point - {px, py} canvas-relative pixel coordinates
      */
     function _handleClick(point) {
-        if (gameState === CHESS_GAME_STATE.MENU) {
-            if (ChessRenderer.learnButtonFromPixel(point.px, point.py)) {
-                if (typeof ChessLearn !== 'undefined' && ChessLearn.openMenu) {
+        if (ChessLearn.isActive()) {
+            // Back button takes priority. From the opening picker it exits Learn
+            // mode entirely; from Walkthrough/Practice it returns to the picker.
+            if (ChessRenderer.backButtonFromPixel(point.px, point.py)) {
+                if (ChessLearn.getState() === CHESS_LEARN_STATE.MENU) {
+                    ChessLearn.exit();
+                } else {
                     ChessLearn.openMenu();
                 }
+                return;
+            }
+            ChessLearn.handleClick(point);
+            return;
+        }
+
+        if (gameState === CHESS_GAME_STATE.MENU) {
+            if (ChessRenderer.learnButtonFromPixel(point.px, point.py)) {
+                ChessLearn.openMenu();
                 return;
             }
             _startNewGame();

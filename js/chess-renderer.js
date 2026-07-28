@@ -389,6 +389,163 @@ const ChessRenderer = (() => {
         return px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h;
     }
 
+    let learnMenuRects = [];      // [{x,y,w,h,openingId,mode}]
+    let backButtonRect = null;
+
+    function renderLearnMenu() {
+        learnMenuRects = [];
+        ctx.save();
+        ctx.fillStyle = CHESS_COLORS.background;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const centerX = canvas.width / 2;
+        const titleSize = Math.max(28, Math.min(canvas.width, canvas.height) * 0.05);
+        ctx.font = `bold ${titleSize}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textPrimary;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Learn Chess Openings', centerX, titleSize * 1.5);
+
+        const openings = ChessOpenings.getAll();
+        const rowHeight = titleSize * 1.3;
+        const startY = titleSize * 3;
+
+        for (let i = 0; i < openings.length; i++) {
+            const op = openings[i];
+            const y = startY + i * rowHeight;
+
+            // Two buttons: Walkthrough, Practice
+            const btnW = titleSize * 2.8;
+            const btnH = titleSize * 0.7;
+            const walkX = centerX;
+            const pracX = centerX + btnW + titleSize * 0.5;
+
+            ctx.font = `bold ${titleSize * 0.5}px sans-serif`;
+            ctx.fillStyle = CHESS_COLORS.textPrimary;
+            ctx.textAlign = 'right';
+            ctx.fillText(op.name, walkX - btnW / 2 - titleSize * 0.4, y);
+            ctx.textAlign = 'center';
+
+            _drawLearnButton(walkX, y, btnW, btnH, 'Walkthrough', 'walkthrough', op.id);
+            _drawLearnButton(pracX, y, btnW, btnH, 'Practice', 'practice', op.id);
+        }
+
+        // Back button
+        backButtonRect = {
+            x: titleSize * 0.5,
+            y: titleSize * 0.5,
+            w: titleSize * 2.5,
+            h: titleSize * 0.9
+        };
+        ctx.fillStyle = CHESS_COLORS.border;
+        ctx.fillRect(backButtonRect.x, backButtonRect.y, backButtonRect.w, backButtonRect.h);
+        ctx.strokeStyle = CHESS_COLORS.borderAccent;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(backButtonRect.x, backButtonRect.y, backButtonRect.w, backButtonRect.h);
+        ctx.font = `bold ${titleSize * 0.4}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textPrimary;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('← Back', backButtonRect.x + backButtonRect.w / 2, backButtonRect.y + backButtonRect.h / 2);
+
+        ctx.restore();
+    }
+
+    function _drawLearnButton(centerX, centerY, w, h, label, mode, openingId) {
+        const x = centerX - w / 2;
+        const y = centerY - h / 2;
+        ctx.fillStyle = CHESS_COLORS.border;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = CHESS_COLORS.borderAccent;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+        ctx.font = `bold ${h * 0.5}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textPrimary;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, centerX, centerY);
+        learnMenuRects.push({ x, y, w, h, mode, openingId });
+    }
+
+    function learnOpenerFromPixel(px, py) {
+        for (let i = 0; i < learnMenuRects.length; i++) {
+            const r = learnMenuRects[i];
+            if (px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h) {
+                return { id: r.openingId, mode: r.mode };
+            }
+        }
+        return null;
+    }
+
+    function renderBackButton() {
+        const fontSize = Math.max(14, squareSize * 0.25);
+        const w = fontSize * 4;
+        const h = fontSize * 1.8;
+        backButtonRect = { x: 12, y: 12, w, h };
+        ctx.save();
+        ctx.fillStyle = CHESS_COLORS.border;
+        ctx.fillRect(backButtonRect.x, backButtonRect.y, w, h);
+        ctx.strokeStyle = CHESS_COLORS.borderAccent;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(backButtonRect.x, backButtonRect.y, w, h);
+        ctx.font = `bold ${fontSize * 0.7}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textPrimary;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('← Back', backButtonRect.x + w / 2, backButtonRect.y + h / 2);
+        ctx.restore();
+    }
+
+    function backButtonFromPixel(px, py) {
+        if (!backButtonRect) return false;
+        const r = backButtonRect;
+        return px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h;
+    }
+
+    function renderLearnCaption(text) {
+        if (!text) return;
+        const fontSize = Math.max(14, squareSize * 0.22);
+        const textY = offsetY + boardSize + squareSize * 0.55;
+        ctx.save();
+        ctx.font = `${fontSize}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textPrimary;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, canvas.width / 2, textY);
+        ctx.restore();
+    }
+
+    function renderWrongFlash(square) {
+        const x = offsetX + square.c * squareSize;
+        const y = offsetY + (7 - square.r) * squareSize;
+        ctx.save();
+        ctx.fillStyle = 'rgba(211, 47, 47, 0.5)';
+        ctx.fillRect(x, y, squareSize, squareSize);
+        ctx.strokeStyle = CHESS_COLORS.check;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x + 4, y + 4, squareSize - 8, squareSize - 8);
+        ctx.restore();
+    }
+
+    function renderLearnComplete() {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const titleSize = Math.max(28, Math.min(canvas.width, canvas.height) * 0.06);
+        ctx.font = `bold ${titleSize}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textPrimary;
+        ctx.fillText('Opening Complete', centerX, centerY - titleSize * 0.5);
+        const subSize = titleSize * 0.5;
+        ctx.font = `${subSize}px sans-serif`;
+        ctx.fillStyle = CHESS_COLORS.textSecondary;
+        ctx.fillText('Tap to continue', centerX, centerY + titleSize * 0.5);
+        ctx.restore();
+    }
+
     function clear() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = CHESS_COLORS.background;
@@ -402,6 +559,8 @@ const ChessRenderer = (() => {
         squareFromPixel,
         promotionChoiceFromPixel,
         learnButtonFromPixel,
+        learnOpenerFromPixel,
+        backButtonFromPixel,
         renderBoard,
         renderBorder,
         renderCoordinates,
@@ -412,6 +571,11 @@ const ChessRenderer = (() => {
         renderMenuScreen,
         renderGameOver,
         renderPromotionPicker,
+        renderLearnMenu,
+        renderLearnCaption,
+        renderLearnComplete,
+        renderWrongFlash,
+        renderBackButton,
         clear
     };
 })();
