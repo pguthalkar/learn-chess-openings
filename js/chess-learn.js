@@ -18,11 +18,14 @@ const ChessLearn = (() => {
     let step = 0;                 // index into opening.moves
     let selectedFrom = null;      // {r, c} — piece user clicked first
     let wrongFlash = null;        // {square:{r,c}, until:number} for red flash
+    let successFlash = null;      // {square:{r,c}, until:number} for green flash
+    let correctionArrow = null;   // {from:{r,c}, to:{r,c}, until:number}
     let pendingBlackMove = null;  // timeout id for the 300ms Black auto-play
     let lastError = null;         // {message} for error overlay
 
     const BLACK_RESPONSE_DELAY_MS = 300;
     const WRONG_MOVE_FLASH_MS = 600;
+    const SUCCESS_FLASH_MS = 400;
 
     function _clearTimers() {
         if (pendingBlackMove !== null) {
@@ -186,16 +189,19 @@ const ChessLearn = (() => {
         // Already have selectedFrom. Check destination.
         if (sq.row === expected.to.r && sq.col === expected.to.c) {
             // Correct
+            successFlash = { square: { r: expected.to.r, c: expected.to.c }, until: Date.now() + SUCCESS_FLASH_MS };
             _applyStep();
             selectedFrom = null;
             _checkEndOrContinue();
         } else {
-            // Wrong destination — flash and auto-correct
+            // Wrong destination — flash, show the correct move, and auto-correct
             wrongFlash = { square: { r: selectedFrom.r, c: selectedFrom.c }, until: Date.now() + WRONG_MOVE_FLASH_MS };
+            correctionArrow = { from: { r: expected.from.r, c: expected.from.c }, to: { r: expected.to.r, c: expected.to.c }, until: Date.now() + WRONG_MOVE_FLASH_MS };
             selectedFrom = null;
             setTimeout(() => {
                 if (state !== CHESS_LEARN_STATE.PRACTICE) return;
-                if (wrongFlash) wrongFlash = null;
+                wrongFlash = null;
+                correctionArrow = null;
                 _applyStep();
                 _checkEndOrContinue();
             }, WRONG_MOVE_FLASH_MS);
@@ -223,6 +229,14 @@ const ChessLearn = (() => {
             if (wrongFlash && Date.now() < wrongFlash.until) {
                 ChessRenderer.renderWrongFlash(wrongFlash.square);
             }
+            // Correct-move flash overlay
+            if (successFlash && Date.now() < successFlash.until) {
+                ChessRenderer.renderSuccessFlash(successFlash.square);
+            }
+            // Correction arrow (shown during the same window as wrongFlash)
+            if (correctionArrow && Date.now() < correctionArrow.until) {
+                ChessRenderer.renderCorrectionArrow(correctionArrow.from, correctionArrow.to);
+            }
             // Back button
             ChessRenderer.renderBackButton();
             return;
@@ -245,6 +259,7 @@ const ChessLearn = (() => {
         handleClick,
         render,
         getState: () => state,
-        getError: () => lastError
+        getError: () => lastError,
+        getFlashState: () => ({ wrongFlash, successFlash, correctionArrow })
     };
 })();
