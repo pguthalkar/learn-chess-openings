@@ -527,6 +527,65 @@ const ChessRenderer = (() => {
         ctx.restore();
     }
 
+    function renderSuccessFlash(square) {
+        const x = offsetX + square.c * squareSize;
+        const y = offsetY + (7 - square.r) * squareSize;
+        ctx.save();
+        ctx.fillStyle = 'rgba(76, 175, 80, 0.5)';
+        ctx.fillRect(x, y, squareSize, squareSize);
+        ctx.strokeStyle = CHESS_COLORS.correct;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x + 4, y + 4, squareSize - 8, squareSize - 8);
+        ctx.restore();
+    }
+
+    /**
+     * renderCorrectionArrow — straight line + triangular arrowhead from the
+     * center of `from` to just short of the center of `to` (pulled back so
+     * the tip doesn't sit directly under the piece glyph on the destination
+     * square).
+     */
+    function renderCorrectionArrow(from, to) {
+        const fromX = offsetX + from.c * squareSize + squareSize / 2;
+        const fromY = offsetY + (7 - from.r) * squareSize + squareSize / 2;
+        const toX = offsetX + to.c * squareSize + squareSize / 2;
+        const toY = offsetY + (7 - to.r) * squareSize + squareSize / 2;
+
+        const angle = Math.atan2(toY - fromY, toX - fromX);
+        const headLength = squareSize * 0.28;
+        const headWidth = squareSize * 0.18;
+        const tipX = toX - Math.cos(angle) * squareSize * 0.15;
+        const tipY = toY - Math.sin(angle) * squareSize * 0.15;
+        const baseX = tipX - headLength * Math.cos(angle);
+        const baseY = tipY - headLength * Math.sin(angle);
+
+        ctx.save();
+        ctx.strokeStyle = CHESS_COLORS.selected;
+        ctx.fillStyle = CHESS_COLORS.selected;
+        ctx.lineWidth = Math.max(3, squareSize * 0.08);
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(baseX, baseY);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(
+            baseX + Math.cos(angle + Math.PI / 2) * headWidth,
+            baseY + Math.sin(angle + Math.PI / 2) * headWidth
+        );
+        ctx.lineTo(
+            baseX + Math.cos(angle - Math.PI / 2) * headWidth,
+            baseY + Math.sin(angle - Math.PI / 2) * headWidth
+        );
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+    }
+
     function renderLearnComplete() {
         ctx.save();
         ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -575,6 +634,8 @@ const ChessRenderer = (() => {
         renderLearnCaption,
         renderLearnComplete,
         renderWrongFlash,
+        renderSuccessFlash,
+        renderCorrectionArrow,
         renderBackButton,
         clear
     };
