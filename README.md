@@ -25,6 +25,15 @@ python3 -m http.server 8000
 
 Then visit `http://localhost:8000/chess.html`. Click canvas to start, click a piece then a destination square to move.
 
+## Learn Mode
+
+`chess.html` now includes a **Learn Openings** option on the menu. It offers two modes for studying three curated openings (Italian Game, Ruy Lopez, Queen's Gambit):
+
+- **Walkthrough** — user-paced; click each piece and destination to step through the main line. No penalties.
+- **Practice** — you play White; the app plays Black's correct responses. Wrong moves flash red and get auto-corrected so the line continues.
+
+Click "← Back" at any time to return to the opening picker, or again from there to return to the main menu.
+
 ## Resources
 
 - `assets/` - Game audio and sprites
