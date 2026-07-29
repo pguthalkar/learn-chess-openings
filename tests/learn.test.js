@@ -175,29 +175,32 @@ function test_fen_deriveCastlingRights() {
 loadScript('js/chess-openings.js');
 loadScript('js/chess-learn.js');
 
+const CHESS_START_FEN_TEST = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
 console.log('\nChessOpenings.validate');
 test_openings_validate_accepts_bundled();
 test_openings_validate_rejects_out_of_bounds();
 test_openings_validate_rejects_empty_start();
+test_openings_validate_rejects_missing_ismain();
+test_openings_validate_rejects_duplicate_ismain();
+test_openings_validate_rejects_fen_mismatch();
 
 function test_openings_validate_accepts_bundled() {
     const result = ChessOpenings.validate();
-    assert(result.valid.length === 3, 'all three bundled openings pass validation');
+    assert(result.valid.length === 1, 'the bundled opening (italian) passes validation');
     assert(result.invalid.length === 0, 'no invalid openings');
 }
 
 function test_openings_validate_rejects_out_of_bounds() {
-    // Mutate the openings to include a bad one, then re-validate
     const original = CHESS_OPENINGS.slice();
     CHESS_OPENINGS.push({
-        id: 'bad-bounds',
-        name: 'Bad Bounds',
-        caption: 'oob',
-        moves: [{ from: { r: 0, c: 0 }, to: { r: 8, c: 0 } }]
+        id: 'bad-bounds', name: 'Bad Bounds', caption: 'oob',
+        root: { move: null, fen: CHESS_START_FEN_TEST, children: [
+            { move: { from: { r: 0, c: 0 }, to: { r: 8, c: 0 } }, fen: 'x', children: [] }
+        ] }
     });
     const result = ChessOpenings.validate();
     assert(result.invalid.some(o => o.id === 'bad-bounds'), 'bad-bounds rejected');
-    // Restore
     CHESS_OPENINGS.length = 0;
     CHESS_OPENINGS.push(...original);
 }
@@ -205,13 +208,66 @@ function test_openings_validate_rejects_out_of_bounds() {
 function test_openings_validate_rejects_empty_start() {
     const original = CHESS_OPENINGS.slice();
     CHESS_OPENINGS.push({
-        id: 'bad-empty',
-        name: 'Bad Empty',
-        caption: 'empty',
-        moves: [{ from: { r: 3, c: 3 }, to: { r: 4, c: 3 } }] // e4 starts on an empty square
+        id: 'bad-empty', name: 'Bad Empty', caption: 'empty',
+        root: { move: null, fen: CHESS_START_FEN_TEST, children: [
+            { move: { from: { r: 3, c: 3 }, to: { r: 4, c: 3 } }, fen: 'x', children: [] } // e4 played from an empty square
+        ] }
     });
     const result = ChessOpenings.validate();
     assert(result.invalid.some(o => o.id === 'bad-empty'), 'bad-empty rejected');
+    CHESS_OPENINGS.length = 0;
+    CHESS_OPENINGS.push(...original);
+}
+
+function test_openings_validate_rejects_missing_ismain() {
+    const original = CHESS_OPENINGS.slice();
+    CHESS_OPENINGS.push({
+        id: 'bad-no-main', name: 'Bad No Main', caption: 'no main',
+        root: { move: null, fen: CHESS_START_FEN_TEST, children: [
+            { move: { from: { r: 1, c: 4 }, to: { r: 3, c: 4 }, isDoubleStep: true },
+              fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+              children: [
+                { move: { from: { r: 6, c: 4 }, to: { r: 4, c: 4 }, isDoubleStep: true }, fen: 'a', name: 'Line A', eco: 'X01', children: [] },
+                { move: { from: { r: 6, c: 3 }, to: { r: 4, c: 3 }, isDoubleStep: true }, fen: 'b', name: 'Line B', eco: 'X02', children: [] }
+              ] }
+        ] }
+    });
+    const result = ChessOpenings.validate();
+    assert(result.invalid.some(o => o.id === 'bad-no-main'), 'branch node with no isMain child rejected');
+    CHESS_OPENINGS.length = 0;
+    CHESS_OPENINGS.push(...original);
+}
+
+function test_openings_validate_rejects_duplicate_ismain() {
+    const original = CHESS_OPENINGS.slice();
+    CHESS_OPENINGS.push({
+        id: 'bad-dup-main', name: 'Bad Dup Main', caption: 'dup main',
+        root: { move: null, fen: CHESS_START_FEN_TEST, children: [
+            { move: { from: { r: 1, c: 4 }, to: { r: 3, c: 4 }, isDoubleStep: true },
+              fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+              children: [
+                { move: { from: { r: 6, c: 4 }, to: { r: 4, c: 4 }, isDoubleStep: true }, fen: 'a', name: 'Line A', eco: 'X01', isMain: true, children: [] },
+                { move: { from: { r: 6, c: 3 }, to: { r: 4, c: 3 }, isDoubleStep: true }, fen: 'b', name: 'Line B', eco: 'X02', isMain: true, children: [] }
+              ] }
+        ] }
+    });
+    const result = ChessOpenings.validate();
+    assert(result.invalid.some(o => o.id === 'bad-dup-main'), 'branch node with two isMain children rejected');
+    CHESS_OPENINGS.length = 0;
+    CHESS_OPENINGS.push(...original);
+}
+
+function test_openings_validate_rejects_fen_mismatch() {
+    const original = CHESS_OPENINGS.slice();
+    CHESS_OPENINGS.push({
+        id: 'bad-fen', name: 'Bad Fen', caption: 'fen mismatch',
+        root: { move: null, fen: CHESS_START_FEN_TEST, children: [
+            { move: { from: { r: 1, c: 4 }, to: { r: 3, c: 4 }, isDoubleStep: true },
+              fen: 'not-the-real-fen', children: [] }
+        ] }
+    });
+    const result = ChessOpenings.validate();
+    assert(result.invalid.some(o => o.id === 'bad-fen'), 'authored fen not matching computed fen rejected');
     CHESS_OPENINGS.length = 0;
     CHESS_OPENINGS.push(...original);
 }
@@ -245,11 +301,25 @@ function pixelFor(row, col) {
 function clickSquare(row, col) {
     ChessLearn.handleClick(pixelFor(row, col));
 }
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+function mainLineMoves(root) {
+    const moves = [];
+    let node = root;
+    while (node.children.length > 0) {
+        const next = node.children.length === 1 ? node.children[0] : node.children.find(c => c.isMain);
+        moves.push(next.move);
+        node = next;
+    }
+    return moves;
+}
 
 console.log('\nChessLearn state machine');
 test_learn_walkthrough_correctMoveAdvances();
 test_learn_walkthrough_wrongFromIgnored();
 test_learn_walkthrough_wrongToIgnored();
+test_learn_walkthrough_nonMainBranchClickIgnored();
 test_learn_practice_correctUserMoveAndAutoBlack();
 test_learn_practice_wrongDestinationTriggersCorrection();
 test_learn_completeReachedAtEnd();
@@ -285,9 +355,31 @@ function test_learn_walkthrough_wrongToIgnored() {
     ChessLearn.exit();
 }
 
+function test_learn_walkthrough_nonMainBranchClickIgnored() {
+    ChessLearn.start('italian', 'walkthrough');
+    clickSquare(1, 4); clickSquare(3, 4); // 1.e4
+    clickSquare(6, 4); clickSquare(4, 4); // 1...e5
+    clickSquare(0, 6); clickSquare(2, 5); // 2.Nf3
+    clickSquare(7, 1); clickSquare(5, 2); // 2...Nc6
+    clickSquare(0, 5); clickSquare(3, 2); // 3.Bc4 — branch node (Giuoco Piano is isMain, Two Knights is not)
+    assertEqual(ChessLearn.getCaption(), 'Italian: e4 e5, knights out, bishop to c4.', 'caption still opening-level before the branch');
+
+    // Two Knights Defense (3...Nf6, g8-f6) is NOT the main child — click is ignored
+    clickSquare(7, 6); clickSquare(5, 5);
+    assert(ChessBoard.getPiece(7, 6) !== null, 'knight still on g8 — non-main branch click ignored');
+    assertEqual(ChessLearn.getCaption(), 'Italian: e4 e5, knights out, bishop to c4.', 'caption unchanged after ignored click');
+
+    // Giuoco Piano (3...Bc5, f8-c5) IS the main child — advances normally
+    clickSquare(7, 5); clickSquare(4, 2);
+    assert(ChessBoard.getPiece(4, 2) !== null, 'bishop landed on c5');
+    assertEqual(ChessLearn.getCaption(), 'Giuoco Piano', 'caption switches to the named variation');
+    ChessLearn.exit();
+}
+
 function test_learn_practice_correctUserMoveAndAutoBlack() {
     // Practice auto-plays Black via a 300ms setTimeout; this test only checks
-    // the synchronous user-move path (the auto-play is verified in-browser).
+    // the synchronous user-move path (the auto-play itself is exercised with
+    // real timers in the async branch tests below).
     ChessLearn.start('italian', 'practice');
     clickSquare(1, 4); // e2
     clickSquare(3, 4); // e4
@@ -318,16 +410,55 @@ function test_learn_practice_wrongDestinationTriggersCorrection() {
 }
 
 function test_learn_completeReachedAtEnd() {
-    // Use queens-gambit (also 10 plies)
-    ChessLearn.start('queens-gambit', 'walkthrough');
-    const moves = CHESS_OPENINGS.find(o => o.id === 'queens-gambit').moves;
+    ChessLearn.start('italian', 'walkthrough');
+    const op = ChessOpenings.getById('italian');
+    const moves = mainLineMoves(op.root);
     for (let i = 0; i < moves.length; i++) {
         clickSquare(moves[i].from.r, moves[i].from.c);
         clickSquare(moves[i].to.r, moves[i].to.c);
     }
-    assertEqual(ChessLearn.getState(), 'learn_complete', 'reached COMPLETE after final move');
+    assertEqual(ChessLearn.getState(), 'learn_complete', "reached COMPLETE after the main line's final move");
     ChessLearn.exit();
 }
 
-console.log(`\n${passed} passed, ${failed} failed`);
-process.exit(failed > 0 ? 1 : 0);
+// --- Async: Practice branching, driven with real timers so Black's 300ms
+// auto-play actually fires. RNG is injected via ChessLearn.setRngForTesting
+// for determinism instead of sampling Math.random over many trials — this
+// gives a stronger, non-flaky guarantee that the auto-play correctly picks
+// children[index] for any index, rather than a statistical sample.
+async function runAsyncBranchTests() {
+    console.log('\nChessLearn practice branching (async, real timers, injected RNG)');
+
+    ChessLearn.setRngForTesting(() => 0);
+    ChessLearn.start('italian', 'practice');
+    clickSquare(1, 4); clickSquare(3, 4); // 1.e4
+    await sleep(400); // black auto 1...e5 (single child — rng irrelevant here)
+    clickSquare(0, 6); clickSquare(2, 5); // 2.Nf3
+    await sleep(400); // black auto 2...Nc6 (single child)
+    clickSquare(0, 5); clickSquare(3, 2); // 3.Bc4
+    await sleep(400); // black auto-picks branch child index 0 = Giuoco Piano
+    assertEqual(ChessLearn.getCurrentNode().name, 'Giuoco Piano', 'rng=>0 picks the Giuoco Piano branch');
+    assertEqual(ChessLearn.getCaption(), 'Giuoco Piano', 'caption reflects Giuoco Piano');
+    assert(ChessBoard.getPiece(4, 2) !== null && ChessBoard.getPiece(4, 2).type === 'bishop', 'black bishop landed on c5');
+    ChessLearn.exit();
+    ChessLearn.setRngForTesting(null);
+
+    ChessLearn.setRngForTesting(() => 0.99);
+    ChessLearn.start('italian', 'practice');
+    clickSquare(1, 4); clickSquare(3, 4);
+    await sleep(400);
+    clickSquare(0, 6); clickSquare(2, 5);
+    await sleep(400);
+    clickSquare(0, 5); clickSquare(3, 2);
+    await sleep(400); // black auto-picks branch child index 1 = Two Knights Defense
+    assertEqual(ChessLearn.getCurrentNode().name, 'Two Knights Defense', 'rng=>0.99 picks the Two Knights Defense branch');
+    assertEqual(ChessLearn.getCaption(), 'Two Knights Defense', 'caption reflects Two Knights Defense');
+    assert(ChessBoard.getPiece(5, 5) !== null && ChessBoard.getPiece(5, 5).type === 'knight', 'black knight landed on f6');
+    ChessLearn.exit();
+    ChessLearn.setRngForTesting(null);
+}
+
+runAsyncBranchTests().then(() => {
+    console.log(`\n${passed} passed, ${failed} failed`);
+    process.exit(failed > 0 ? 1 : 0);
+});
