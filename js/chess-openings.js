@@ -265,6 +265,7 @@ const ChessOpenings = (() => {
             }
             const seen = new Set();
             for (const child of node.children) {
+                if (!child.move || !child.move.from || !child.move.to) continue; // reported by the per-child loop below
                 const key = `${child.move.from.r},${child.move.from.c}-${child.move.to.r},${child.move.to.c}`;
                 if (seen.has(key)) {
                     errors.push(`${pathLabel}: duplicate/ambiguous child move ${key}`);
@@ -275,12 +276,12 @@ const ChessOpenings = (() => {
 
         for (const child of node.children) {
             const mv = child.move;
-            const childLabel = pathLabel + ' ' + _moveLabel(mv);
 
             if (!mv || !mv.from || !mv.to) {
-                errors.push(`${childLabel}: missing from/to`);
+                errors.push(`${pathLabel}: a child is missing move.from/move.to`);
                 continue;
             }
+            const childLabel = pathLabel + ' ' + _moveLabel(mv);
             if (!_isInBounds(mv.from.r, mv.from.c) || !_isInBounds(mv.to.r, mv.to.c)) {
                 errors.push(`${childLabel}: out-of-bounds coordinates`);
                 continue;
@@ -324,6 +325,10 @@ const ChessOpenings = (() => {
         }
     }
 
+    /**
+     * Validate the CHESS_OPENINGS tree. Returns { valid: [...], invalid: [...] }.
+     * Each invalid entry includes an `errors` array of human-readable strings.
+     */
     function validate() {
         const valid = [];
         const invalid = [];

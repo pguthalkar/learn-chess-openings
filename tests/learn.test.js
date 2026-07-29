@@ -456,6 +456,71 @@ async function runAsyncBranchTests() {
     assert(ChessBoard.getPiece(5, 5) !== null && ChessBoard.getPiece(5, 5).type === 'knight', 'black knight landed on f6');
     ChessLearn.exit();
     ChessLearn.setRngForTesting(null);
+
+    await test_learn_practice_doubleWrongClickDoesNotCrashSession();
+    await test_learn_practice_userPicksNonMainWhiteBranch_exchangeVariation();
+    await test_learn_practice_userPicksMainWhiteBranch_closedMainLine();
+    await test_learn_practice_threeWayBranch_picksThirdChild();
+}
+
+async function test_learn_practice_doubleWrongClickDoesNotCrashSession() {
+    ChessLearn.start('italian', 'practice');
+    clickSquare(1, 4); // e2 — correct source
+    clickSquare(3, 0); // a4 — wrong destination (arms first correction timer)
+    clickSquare(1, 4); // e2 again — correct source
+    clickSquare(3, 1); // b4 — wrong destination again, inside the first timer's 600ms window
+    await sleep(700); // let both corrections resolve
+    assertEqual(ChessLearn.getState(), 'learn_practice', 'still in practice after two rapid wrong clicks — no crash to menu');
+    assert(ChessLearn.getError() === null, 'no error recorded after double wrong click');
+    ChessLearn.exit();
+}
+
+async function test_learn_practice_userPicksNonMainWhiteBranch_exchangeVariation() {
+    ChessLearn.setRngForTesting(() => 0.99); // forces Black's Nf6-vs-a6 pick to a6 (Closed Ruy Lopez)
+    ChessLearn.start('ruy-lopez', 'practice');
+    clickSquare(1, 4); clickSquare(3, 4); // 1.e4
+    await sleep(400); // black auto 1...e5
+    clickSquare(0, 6); clickSquare(2, 5); // 2.Nf3
+    await sleep(400); // black auto 2...Nc6
+    clickSquare(0, 5); clickSquare(4, 1); // 3.Bb5
+    await sleep(400); // black auto-picks a6 (Closed Ruy Lopez) via rng=>0.99
+    assertEqual(ChessLearn.getCurrentNode().name, 'Closed Ruy Lopez', 'black auto-play entered Closed Ruy Lopez');
+    // White's turn now — user clicks the NON-main child (4.Bxc6, Exchange Variation)
+    clickSquare(4, 1); clickSquare(5, 2);
+    assertEqual(ChessLearn.getCurrentNode().name, 'Exchange Variation', 'user click on the non-main child is accepted in Practice');
+    assert(ChessBoard.getPiece(5, 2) !== null && ChessBoard.getPiece(5, 2).type === 'bishop', 'white bishop captured on c6');
+    ChessLearn.exit();
+    ChessLearn.setRngForTesting(null);
+}
+
+async function test_learn_practice_userPicksMainWhiteBranch_closedMainLine() {
+    ChessLearn.setRngForTesting(() => 0.99); // forces Black's Nf6-vs-a6 pick to a6 (Closed Ruy Lopez)
+    ChessLearn.start('ruy-lopez', 'practice');
+    clickSquare(1, 4); clickSquare(3, 4);
+    await sleep(400);
+    clickSquare(0, 6); clickSquare(2, 5);
+    await sleep(400);
+    clickSquare(0, 5); clickSquare(4, 1);
+    await sleep(400);
+    assertEqual(ChessLearn.getCurrentNode().name, 'Closed Ruy Lopez', 'black auto-play entered Closed Ruy Lopez');
+    // White's turn — user clicks the MAIN child (4.Ba4)
+    clickSquare(4, 1); clickSquare(3, 0);
+    assert(ChessLearn.getState() === 'learn_practice' || ChessLearn.getState() === 'learn_complete', 'still progressing after main-line click');
+    assert(ChessBoard.getPiece(3, 0) !== null && ChessBoard.getPiece(3, 0).type === 'bishop', 'white bishop retreated to a4');
+    ChessLearn.exit();
+    ChessLearn.setRngForTesting(null);
+}
+
+async function test_learn_practice_threeWayBranch_picksThirdChild() {
+    ChessLearn.setRngForTesting(() => 0.99); // floor(0.99 * 3) = 2 -> third child
+    ChessLearn.start('queens-gambit', 'practice');
+    clickSquare(1, 3); clickSquare(3, 3); // 1.d4
+    await sleep(400); // black auto 1...d5
+    clickSquare(1, 2); clickSquare(3, 2); // 2.c4
+    await sleep(400); // black auto-picks the 3rd branch child via rng=>0.99
+    assertEqual(ChessLearn.getCurrentNode().name, 'Slav Defense', 'rng=>0.99 picks the third child (Slav Defense) of the 3-way branch');
+    ChessLearn.exit();
+    ChessLearn.setRngForTesting(null);
 }
 
 runAsyncBranchTests().then(() => {

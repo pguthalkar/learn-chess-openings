@@ -204,6 +204,9 @@ const ChessLearn = (() => {
     }
 
     function _handlePracticeClick(point) {
+        // A correction is already pending (600ms flash window) — ignore clicks
+        // until it resolves, rather than arming a second competing timer.
+        if (pendingCorrection !== null) return;
         // Black's turn — clicks are ignored
         if (_expectedPlayer() === CHESS_PLAYER.TWO) return;
 
