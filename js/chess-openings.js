@@ -135,6 +135,103 @@ const CHESS_OPENINGS = [
                   ] }
             ]
         }
+    },
+    {
+        id: 'queens-gambit',
+        name: "Queen's Gambit",
+        caption: "Queen's Gambit: d4 d5, c4 — offer a pawn for center control.",
+        root: {
+            move: null, fen: CHESS_START_FEN,
+            children: [
+                { move: { from: { r: 1, c: 3 }, to: { r: 3, c: 3 }, isDoubleStep: true },
+                  fen: 'rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1',
+                  children: [
+                    { move: { from: { r: 6, c: 3 }, to: { r: 4, c: 3 }, isDoubleStep: true },
+                      fen: 'rnbqkbnr/ppp1pppp/8/3p4/3P4/8/PPP1PPPP/RNBQKBNR w KQkq d6 0 2',
+                      children: [
+                        { move: { from: { r: 1, c: 2 }, to: { r: 3, c: 2 } },
+                          fen: 'rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2',
+                          children: [
+                            // Queen's Gambit Accepted
+                            { move: { from: { r: 4, c: 3 }, to: { r: 3, c: 2 } },
+                              fen: 'rnbqkbnr/ppp1pppp/8/8/2pP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3',
+                              name: "Queen's Gambit Accepted", eco: 'D20',
+                              children: [
+                                { move: { from: { r: 0, c: 6 }, to: { r: 2, c: 5 } },
+                                  fen: 'rnbqkbnr/ppp1pppp/8/8/2pP4/5N2/PP2PPPP/RNBQKB1R b KQkq - 1 3',
+                                  children: [
+                                    { move: { from: { r: 7, c: 6 }, to: { r: 5, c: 5 } },
+                                      fen: 'rnbqkb1r/ppp1pppp/5n2/8/2pP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4',
+                                      children: [
+                                        { move: { from: { r: 1, c: 4 }, to: { r: 2, c: 4 } },
+                                          fen: 'rnbqkb1r/ppp1pppp/5n2/8/2pP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4',
+                                          children: [
+                                            { move: { from: { r: 6, c: 4 }, to: { r: 5, c: 4 } },
+                                              fen: 'rnbqkb1r/ppp2ppp/4pn2/8/2pP4/4PN2/PP3PPP/RNBQKB1R w KQkq - 0 5',
+                                              children: [
+                                                { move: { from: { r: 0, c: 5 }, to: { r: 3, c: 2 } },
+                                                  fen: 'rnbqkb1r/ppp2ppp/4pn2/8/2BP4/4PN2/PP3PPP/RNBQK2R b KQkq - 0 5',
+                                                  children: [] }
+                                              ] }
+                                          ] }
+                                      ] }
+                                  ] }
+                              ] },
+                            // Queen's Gambit Declined (main line)
+                            { move: { from: { r: 6, c: 4 }, to: { r: 5, c: 4 } },
+                              fen: 'rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3',
+                              name: "Queen's Gambit Declined", eco: 'D30', isMain: true,
+                              children: [
+                                { move: { from: { r: 0, c: 1 }, to: { r: 2, c: 2 } },
+                                  fen: 'rnbqkbnr/ppp2ppp/4p3/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR b KQkq - 1 3',
+                                  children: [
+                                    { move: { from: { r: 7, c: 6 }, to: { r: 5, c: 5 } },
+                                      fen: 'rnbqkb1r/ppp2ppp/4pn2/3p4/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4',
+                                      children: [
+                                        { move: { from: { r: 0, c: 2 }, to: { r: 4, c: 6 } },
+                                          fen: 'rnbqkb1r/ppp2ppp/4pn2/3p2B1/2PP4/2N5/PP2PPPP/R2QKBNR b KQkq - 3 4',
+                                          children: [
+                                            { move: { from: { r: 7, c: 5 }, to: { r: 6, c: 4 } },
+                                              fen: 'rnbqk2r/ppp1bppp/4pn2/3p2B1/2PP4/2N5/PP2PPPP/R2QKBNR w KQkq - 4 5',
+                                              children: [
+                                                { move: { from: { r: 1, c: 4 }, to: { r: 2, c: 4 } },
+                                                  fen: 'rnbqk2r/ppp1bppp/4pn2/3p2B1/2PP4/2N1P3/PP3PPP/R2QKBNR b KQkq - 0 5',
+                                                  children: [] }
+                                              ] }
+                                          ] }
+                                      ] }
+                                  ] }
+                              ] },
+                            // Slav Defense
+                            { move: { from: { r: 6, c: 2 }, to: { r: 5, c: 2 } },
+                              fen: 'rnbqkbnr/pp2pppp/2p5/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3',
+                              name: 'Slav Defense', eco: 'D10',
+                              children: [
+                                { move: { from: { r: 0, c: 6 }, to: { r: 2, c: 5 } },
+                                  fen: 'rnbqkbnr/pp2pppp/2p5/3p4/2PP4/5N2/PP2PPPP/RNBQKB1R b KQkq - 1 3',
+                                  children: [
+                                    { move: { from: { r: 7, c: 6 }, to: { r: 5, c: 5 } },
+                                      fen: 'rnbqkb1r/pp2pppp/2p2n2/3p4/2PP4/5N2/PP2PPPP/RNBQKB1R w KQkq - 2 4',
+                                      children: [
+                                        { move: { from: { r: 0, c: 1 }, to: { r: 2, c: 2 } },
+                                          fen: 'rnbqkb1r/pp2pppp/2p2n2/3p4/2PP4/2N2N2/PP2PPPP/R1BQKB1R b KQkq - 3 4',
+                                          children: [
+                                            { move: { from: { r: 4, c: 3 }, to: { r: 3, c: 2 } },
+                                              fen: 'rnbqkb1r/pp2pppp/2p2n2/8/2pP4/2N2N2/PP2PPPP/R1BQKB1R w KQkq - 0 5',
+                                              children: [
+                                                { move: { from: { r: 1, c: 0 }, to: { r: 3, c: 0 }, isDoubleStep: true },
+                                                  fen: 'rnbqkb1r/pp2pppp/2p2n2/8/P1pP4/2N2N2/1P2PPPP/R1BQKB1R b KQkq a3 0 5',
+                                                  children: [] }
+                                              ] }
+                                          ] }
+                                      ] }
+                                  ] }
+                              ] }
+                          ] }
+                      ] }
+                  ] }
+            ]
+        }
     }
 ];
 

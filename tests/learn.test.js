@@ -187,7 +187,7 @@ test_openings_validate_rejects_fen_mismatch();
 
 function test_openings_validate_accepts_bundled() {
     const result = ChessOpenings.validate();
-    assert(result.valid.length === 2, 'the bundled openings (italian, ruy-lopez) pass validation');
+    assert(result.valid.length === 3, 'all three bundled openings (italian, ruy-lopez, queens-gambit) pass validation');
     assert(result.invalid.length === 0, 'no invalid openings');
 }
 
