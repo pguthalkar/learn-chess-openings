@@ -68,6 +68,73 @@ const CHESS_OPENINGS = [
                   ] }
             ]
         }
+    },
+    {
+        id: 'ruy-lopez',
+        name: 'Ruy Lopez',
+        caption: 'Ruy Lopez: e4 e5, Nf3 Nc6, Bb5 — pressure on the e5 pawn.',
+        root: {
+            move: null, fen: CHESS_START_FEN,
+            children: [
+                { move: { from: { r: 1, c: 4 }, to: { r: 3, c: 4 }, isDoubleStep: true },
+                  fen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1',
+                  children: [
+                    { move: { from: { r: 6, c: 4 }, to: { r: 4, c: 4 }, isDoubleStep: true },
+                      fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2',
+                      children: [
+                        { move: { from: { r: 0, c: 6 }, to: { r: 2, c: 5 } },
+                          fen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2',
+                          children: [
+                            { move: { from: { r: 7, c: 1 }, to: { r: 5, c: 2 } },
+                              fen: 'r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3',
+                              children: [
+                                { move: { from: { r: 0, c: 5 }, to: { r: 4, c: 1 } },
+                                  fen: 'r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3',
+                                  children: [
+                                    // Berlin Defense (main line)
+                                    { move: { from: { r: 7, c: 6 }, to: { r: 5, c: 5 } },
+                                      fen: 'r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4',
+                                      name: 'Berlin Defense', eco: 'C65', isMain: true,
+                                      children: [
+                                        { move: { from: { r: 0, c: 4 }, to: { r: 0, c: 6 }, castle: 'king' },
+                                          fen: 'r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 5 4',
+                                          children: [] }
+                                      ] },
+                                    // Closed Ruy Lopez / Exchange Variation branch
+                                    { move: { from: { r: 6, c: 0 }, to: { r: 5, c: 0 } },
+                                      fen: 'r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4',
+                                      name: 'Closed Ruy Lopez', eco: 'C84',
+                                      children: [
+                                        // Closed main line: 4.Ba4
+                                        { move: { from: { r: 4, c: 1 }, to: { r: 3, c: 0 } },
+                                          fen: 'r1bqkbnr/1ppp1ppp/p1n5/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 1 4',
+                                          isMain: true,
+                                          children: [
+                                            { move: { from: { r: 7, c: 6 }, to: { r: 5, c: 5 } },
+                                              fen: 'r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 5',
+                                              children: [
+                                                { move: { from: { r: 0, c: 4 }, to: { r: 0, c: 6 }, castle: 'king' },
+                                                  fen: 'r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQ1RK1 b kq - 3 5',
+                                                  children: [] }
+                                              ] }
+                                          ] },
+                                        // Exchange Variation: 4.Bxc6
+                                        { move: { from: { r: 4, c: 1 }, to: { r: 5, c: 2 } },
+                                          fen: 'r1bqkbnr/1ppp1ppp/p1B5/4p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4',
+                                          name: 'Exchange Variation', eco: 'C68',
+                                          children: [
+                                            { move: { from: { r: 6, c: 3 }, to: { r: 5, c: 2 } },
+                                              fen: 'r1bqkbnr/1pp2ppp/p1p5/4p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5',
+                                              children: [] }
+                                          ] }
+                                      ] }
+                                  ] }
+                              ] }
+                          ] }
+                      ] }
+                  ] }
+            ]
+        }
     }
 ];
 
