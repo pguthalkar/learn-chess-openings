@@ -14,14 +14,18 @@ const ChessLearn = (() => {
     'use strict';
 
     let state = null;             // one of CHESS_LEARN_STATE.*
-    let opening = null;           // current opening object
-    let step = 0;                 // index into opening.moves
+    let opening = null;           // current opening object ({id, name, caption, root})
+    let currentNode = null;       // tree pointer — current position in opening.root
+    let path = [];                // nodes descended into so far, for caption lookup
+    let step = 0;                 // ply counter — still the source of truth for turn parity
     let selectedFrom = null;      // {r, c} — piece user clicked first
     let wrongFlash = null;        // {square:{r,c}, until:number} for red flash
     let successFlash = null;      // {square:{r,c}, until:number} for green flash
     let correctionArrow = null;   // {from:{r,c}, to:{r,c}, until:number}
     let pendingBlackMove = null;  // timeout id for the 300ms Black auto-play
+    let pendingCorrection = null; // timeout id for the 600ms Practice wrong-move correction
     let lastError = null;         // {message} for error overlay
+    let _rng = Math.random;       // swappable for deterministic tests
 
     const BLACK_RESPONSE_DELAY_MS = 300;
     const WRONG_MOVE_FLASH_MS = 600;
@@ -32,20 +36,37 @@ const ChessLearn = (() => {
             clearTimeout(pendingBlackMove);
             pendingBlackMove = null;
         }
+        if (pendingCorrection !== null) {
+            clearTimeout(pendingCorrection);
+            pendingCorrection = null;
+        }
     }
 
     function _expectedPlayer() {
         return (step % 2 === 0) ? CHESS_PLAYER.ONE : CHESS_PLAYER.TWO;
     }
 
-    function _applyStep() {
-        const move = opening.moves[step];
+    function _mainChild(node) {
+        return node.children.length === 1
+            ? node.children[0]
+            : node.children.find(c => c.isMain === true);
+    }
+
+    function _currentCaption() {
+        for (let i = path.length - 1; i >= 0; i--) {
+            if (path[i].name) return path[i].name;
+        }
+        return opening ? opening.caption : '';
+    }
+
+    function _applyStep(node) {
+        const move = node.move;
         const board = ChessBoard.getBoard();
         let result;
         try {
             result = ChessMoves.applyMove(board, null, move);
         } catch (e) {
-            lastError = { message: 'applyMove failed at step ' + step + ': ' + e.message };
+            lastError = { message: 'applyMove failed: ' + e.message };
             state = CHESS_LEARN_STATE.MENU;
             return;
         }
@@ -54,21 +75,24 @@ const ChessLearn = (() => {
                 ChessBoard.setPiece(r, c, result.newBoard[r][c]);
             }
         }
+        currentNode = node;
+        path.push(node);
         step++;
     }
 
     function _checkEndOrContinue() {
-        if (step >= opening.moves.length) {
+        if (currentNode.children.length === 0) {
             state = CHESS_LEARN_STATE.COMPLETE;
             return;
         }
-        // If next move is Black's, auto-play it after a short delay
         if (_expectedPlayer() === CHESS_PLAYER.TWO && state === CHESS_LEARN_STATE.PRACTICE) {
             _clearTimers();
             pendingBlackMove = setTimeout(() => {
                 pendingBlackMove = null;
-                if (state === CHESS_LEARN_STATE.PRACTICE && step < opening.moves.length && _expectedPlayer() === CHESS_PLAYER.TWO) {
-                    _applyStep();
+                if (state === CHESS_LEARN_STATE.PRACTICE && currentNode.children.length > 0 && _expectedPlayer() === CHESS_PLAYER.TWO) {
+                    const children = currentNode.children;
+                    const chosen = children[Math.floor(_rng() * children.length)];
+                    _applyStep(chosen);
                     _checkEndOrContinue();
                 }
             }, BLACK_RESPONSE_DELAY_MS);
@@ -80,6 +104,8 @@ const ChessLearn = (() => {
         ChessBoard.reset();
         state = CHESS_LEARN_STATE.MENU;
         opening = null;
+        currentNode = null;
+        path = [];
         step = 0;
         selectedFrom = null;
         wrongFlash = null;
@@ -97,6 +123,8 @@ const ChessLearn = (() => {
         }
         ChessBoard.reset();
         opening = op;
+        currentNode = op.root;
+        path = [];
         step = 0;
         selectedFrom = null;
         wrongFlash = null;
@@ -104,8 +132,8 @@ const ChessLearn = (() => {
         correctionArrow = null;
         state = (mode === 'practice') ? CHESS_LEARN_STATE.PRACTICE : CHESS_LEARN_STATE.WALKTHROUGH;
         // If first move is Black's somehow, play it (shouldn't happen with our data — White always moves first)
-        if (_expectedPlayer() === CHESS_PLAYER.TWO) {
-            _applyStep();
+        if (_expectedPlayer() === CHESS_PLAYER.TWO && currentNode.children.length > 0) {
+            _applyStep(currentNode.children[0]);
         }
     }
 
@@ -114,6 +142,8 @@ const ChessLearn = (() => {
         ChessBoard.reset();
         state = null;
         opening = null;
+        currentNode = null;
+        path = [];
         step = 0;
         selectedFrom = null;
         wrongFlash = null;
@@ -150,65 +180,69 @@ const ChessLearn = (() => {
     function _handleWalkthroughClick(point) {
         const sq = ChessRenderer.squareFromPixel(point.px, point.py);
         if (!sq) return;
-        const expected = opening.moves[step];
+        const expected = _mainChild(currentNode);
         const piece = ChessBoard.getPiece(sq.row, sq.col);
 
         if (!selectedFrom) {
-            // Pick a piece — accept any of the active player's pieces that could plausibly move
             if (piece && piece.player === _expectedPlayer() &&
-                sq.row === expected.from.r && sq.col === expected.from.c) {
+                sq.row === expected.move.from.r && sq.col === expected.move.from.c) {
                 selectedFrom = { r: sq.row, c: sq.col };
             }
             return;
         }
 
-        if (sq.row === expected.to.r && sq.col === expected.to.c &&
-            selectedFrom.r === expected.from.r && selectedFrom.c === expected.from.c) {
-            // Correct move — apply
-            _applyStep();
+        if (sq.row === expected.move.to.r && sq.col === expected.move.to.c &&
+            selectedFrom.r === expected.move.from.r && selectedFrom.c === expected.move.from.c) {
+            _applyStep(expected);
             selectedFrom = null;
-            if (step >= opening.moves.length) {
+            if (currentNode.children.length === 0) {
                 state = CHESS_LEARN_STATE.COMPLETE;
             }
         } else {
-            // Wrong destination — just deselect
             selectedFrom = null;
         }
     }
 
     function _handlePracticeClick(point) {
+        // A correction is already pending (600ms flash window) — ignore clicks
+        // until it resolves, rather than arming a second competing timer.
+        if (pendingCorrection !== null) return;
         // Black's turn — clicks are ignored
         if (_expectedPlayer() === CHESS_PLAYER.TWO) return;
 
         const sq = ChessRenderer.squareFromPixel(point.px, point.py);
         if (!sq) return;
-        const expected = opening.moves[step];
 
         if (!selectedFrom) {
-            // Selecting a piece — accept if it matches the expected source
-            if (sq.row === expected.from.r && sq.col === expected.from.c) {
+            const candidate = currentNode.children.find(c => c.move.from.r === sq.row && c.move.from.c === sq.col);
+            if (candidate) {
                 selectedFrom = { r: sq.row, c: sq.col };
             }
             return;
         }
 
-        // Already have selectedFrom. Check destination.
-        if (sq.row === expected.to.r && sq.col === expected.to.c) {
-            // Correct
-            successFlash = { square: { r: expected.to.r, c: expected.to.c }, until: Date.now() + SUCCESS_FLASH_MS };
-            _applyStep();
+        const matched = currentNode.children.find(c =>
+            c.move.from.r === selectedFrom.r && c.move.from.c === selectedFrom.c &&
+            c.move.to.r === sq.row && c.move.to.c === sq.col);
+
+        if (matched) {
+            // Correct — any matching child (any named variation) is accepted
+            successFlash = { square: { r: matched.move.to.r, c: matched.move.to.c }, until: Date.now() + SUCCESS_FLASH_MS };
+            _applyStep(matched);
             selectedFrom = null;
             _checkEndOrContinue();
         } else {
-            // Wrong destination — flash, show the correct move, and auto-correct
+            // Wrong destination — flash, show the correct (main-line) move, and auto-correct
+            const correction = _mainChild(currentNode);
             wrongFlash = { square: { r: selectedFrom.r, c: selectedFrom.c }, until: Date.now() + WRONG_MOVE_FLASH_MS };
-            correctionArrow = { from: { r: expected.from.r, c: expected.from.c }, to: { r: expected.to.r, c: expected.to.c }, until: Date.now() + WRONG_MOVE_FLASH_MS };
+            correctionArrow = { from: { r: correction.move.from.r, c: correction.move.from.c }, to: { r: correction.move.to.r, c: correction.move.to.c }, until: Date.now() + WRONG_MOVE_FLASH_MS };
             selectedFrom = null;
-            setTimeout(() => {
+            pendingCorrection = setTimeout(() => {
+                pendingCorrection = null;
                 if (state !== CHESS_LEARN_STATE.PRACTICE) return;
                 wrongFlash = null;
                 correctionArrow = null;
-                _applyStep();
+                _applyStep(correction);
                 _checkEndOrContinue();
             }, WRONG_MOVE_FLASH_MS);
         }
@@ -229,8 +263,7 @@ const ChessLearn = (() => {
                 ChessRenderer.renderHighlights({ row: selectedFrom.r, col: selectedFrom.c }, []);
             }
             // Caption
-            const caption = opening ? opening.caption : '';
-            ChessRenderer.renderLearnCaption(caption);
+            ChessRenderer.renderLearnCaption(_currentCaption());
             // Wrong-move flash overlay
             if (wrongFlash && Date.now() < wrongFlash.until) {
                 ChessRenderer.renderWrongFlash(wrongFlash.square);
@@ -266,6 +299,9 @@ const ChessLearn = (() => {
         render,
         getState: () => state,
         getError: () => lastError,
-        getFlashState: () => ({ wrongFlash, successFlash, correctionArrow })
+        getFlashState: () => ({ wrongFlash, successFlash, correctionArrow }),
+        getCurrentNode: () => currentNode,
+        getCaption: () => _currentCaption(),
+        setRngForTesting: (fn) => { _rng = fn || Math.random; }
     };
 })();
