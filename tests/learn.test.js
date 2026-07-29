@@ -15,6 +15,7 @@ function loadScript(filePath) {
 }
 
 loadScript('js/chess-constants.js');
+loadScript('js/chess-fen.js');
 loadScript('js/chess-board.js');
 loadScript('js/chess-moves.js');
 loadScript('js/chess-pieces.js');
@@ -114,6 +115,62 @@ test_applyMove_kingSideCastle();
 test_applyMove_queenSideCastle();
 test_applyMove_enPassant();
 test_applyMove_doesNotMutateInput();
+
+console.log('\nChessFEN');
+test_fen_startingPosition();
+test_fen_noCastlingRights();
+test_fen_enPassantTarget();
+test_fen_roundTripStartingPosition();
+test_fen_deriveCastlingRights();
+
+function test_fen_startingPosition() {
+    const fen = ChessFEN.boardToFEN(
+        CHESS_INITIAL_POSITIONS, CHESS_PLAYER.ONE,
+        { whiteKing: true, whiteQueen: true, blackKing: true, blackQueen: true },
+        null, 0, 1
+    );
+    assertEqual(fen, 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', 'starting position FEN matches the known-good oracle');
+}
+
+function test_fen_noCastlingRights() {
+    const board = CHESS_INITIAL_POSITIONS.map(row => row.map(p => p ? { ...p } : null));
+    board[0][4].moved = true; // white king
+    board[0][7].moved = true; // white rook (kingside)
+    board[0][0].moved = true; // white rook (queenside)
+    board[7][4].moved = true; // black king
+    board[7][7].moved = true; // black rook (kingside)
+    board[7][0].moved = true; // black rook (queenside)
+    const fen = ChessFEN.boardToFEN(board, CHESS_PLAYER.ONE, ChessFEN.deriveCastlingRights(board), null, 0, 1);
+    assertEqual(fen.split(' ')[2], '-', 'no castling rights once all kings/rooks have moved');
+}
+
+function test_fen_enPassantTarget() {
+    const fen = ChessFEN.boardToFEN(
+        CHESS_INITIAL_POSITIONS, CHESS_PLAYER.TWO,
+        { whiteKing: true, whiteQueen: true, blackKing: true, blackQueen: true },
+        { row: 2, col: 4 }, 0, 1
+    );
+    assertEqual(fen.split(' ')[3], 'e3', 'en passant target {row:2, col:4} encodes as e3');
+}
+
+function test_fen_roundTripStartingPosition() {
+    const decoded = ChessFEN.fenToBoard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    assert(JSON.stringify(decoded.board) === JSON.stringify(CHESS_INITIAL_POSITIONS), 'fenToBoard round-trips the starting position back to CHESS_INITIAL_POSITIONS');
+    assertEqual(decoded.activeColor, CHESS_PLAYER.ONE, 'active color decoded as White');
+    assertEqual(decoded.halfmoveClock, 0, 'halfmove clock decoded as 0');
+    assertEqual(decoded.fullmoveNumber, 1, 'fullmove number decoded as 1');
+}
+
+function test_fen_deriveCastlingRights() {
+    const startRights = ChessFEN.deriveCastlingRights(CHESS_INITIAL_POSITIONS);
+    assert(startRights.whiteKing && startRights.whiteQueen && startRights.blackKing && startRights.blackQueen, 'all four castling flags true at the starting position');
+
+    const board = CHESS_INITIAL_POSITIONS.map(row => row.map(p => p ? { ...p } : null));
+    board[0][4].moved = true; // white king moved
+    const rights = ChessFEN.deriveCastlingRights(board);
+    assert(rights.whiteKing === false && rights.whiteQueen === false, 'both white castling rights lost once the king has moved');
+    assert(rights.blackKing === true && rights.blackQueen === true, "black's castling rights unaffected");
+}
 
 loadScript('js/chess-openings.js');
 loadScript('js/chess-learn.js');
